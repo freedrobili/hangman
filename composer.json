@@ -1,5 +1,6 @@
 {
     "name": "freedrobili/hangman",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "freedrobili\\hangman\\": "src/"
