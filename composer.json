@@ -7,15 +7,10 @@
         },
         "files": [
             "src/Controller.php",
-            "src/View.php"
+            "src/View.php",
+            "src/Model.php"
         ]
     },
-    "authors": [
-        {
-            "name": "freedrobili",
-            "email": "kudashkina-yuliya@mail.ru"
-        }
-    ],
     "bin": [
         "bin/hangman.php"
     ],

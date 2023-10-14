@@ -7,6 +7,6 @@ if (file_exists($autoloadPath)) {
     require_once($autoloadPath);
 }
 
-use function freedrobili\hangman\Controller\startGame;
+use freedrobili\hangman\Controller\Controller;
 
-startGame();
+Controller::startGame();
