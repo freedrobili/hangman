@@ -3,92 +3,124 @@
 namespace freedrobili\hangman\Model;
 
 use freedrobili\hangman\View\View;
-use SQLite3;
+use RedBeanPHP\R;
 
 class Model
 {
-    private $db;
-
+    private $path;
     public function __construct($path)
     {
-        $this->db = new SQLite3($path);
+        $this->path = $path;
+        R::setup('sqlite:' . $this->path);
+        $this->createTables();
+        $this->fillWords();
+    }
 
-        $query = "CREATE TABLE IF NOT EXISTS finished_games (
-            game_id INTEGER PRIMARY KEY,
-            player STRING, 
-            date_time DATETIME,
-            word STRING,
-            result STRING
-            )";
-        $this->db->exec($query);
+    private function createTables()
+    {
+        if (!file_exists($this->path)) {
+            if (!R::inspect('finishedgames')) {
+                $finishedGamesTable = R::dispense('finishedgames');
+                $finishedGamesTable->id = "INTEGER PRIMARY KEY";
+                $finishedGamesTable->gameId = "INTEGER";
+                $finishedGamesTable->player = "STRING";
+                $finishedGamesTable->datetime = "DATETIME";
+                $finishedGamesTable->word = "STRING";
+                $finishedGamesTable->result = "STRING";
+                R::store($finishedGamesTable);
+            }
 
-        $query = "CREATE TABLE IF NOT EXISTS tries (
-            game_id INTEGER,
-            step INTEGER,
-            letter STRING,
-            result STRING
-            )";
-        $this->db->exec($query);
+            if (!R::inspect('tries')) {
+                $triesTable = R::dispense('tries');
+                $triesTable->id = "INTEGER PRIMARY KEY";
+                $triesTable->gameId = "INTEGER";
+                $triesTable->step = "INTEGER";
+                $triesTable->letter = "STRING";
+                $triesTable->result = "STRING";
+                R::store($triesTable);
+            }
 
-        $query = "CREATE TABLE IF NOT EXISTS words (
-            word STRING PRIMARY KEY
-            )";
-        $this->db->exec($query);
+            if (!R::inspect('words')) {
+                $wordsTable = R::dispense('words');
+                $wordsTable->id = "INTEGER PRIMARY KEY";
+                $wordsTable->word = "STRING";
+                R::store($wordsTable);
+            }
+        }
+    }
 
-        $query = "INSERT OR IGNORE INTO words (word)
-            VALUES
-                ('BUTTER'),
-                ('ORANGE'),
-                ('CIRCLE'),
-                ('FOREST'),
-                ('GUITAR'),
-                ('HAMMER')";
-        $this->db->exec($query);
+    private function fillWords()
+    {
+        $words_array = array('MONDAY', 'ORANGE', 'DANCER', 'PURPLE', 'BUTTER', 'CASTLE');
+        R::begin();
+        try {
+            $this->insertWord('MONDAY');
+            $this->insertWord('ORANGE');
+            $this->insertWord('DANCER');
+            $this->insertWord('PURPLE');
+            $this->insertWord('BUTTER');
+            $this->insertWord('CASTLE');
+            R::commit();
+        } catch (\Exception $e) {
+            R::rollback();
+        }
+    }
+
+    private function insertWord($word)
+    {
+        $existingWord = R::findOne('words', 'word = ?', [$word]);
+        if (!$existingWord) {
+            $newWord = R::dispense('words');
+            $newWord->word = $word;
+            R::store($newWord);
+        }
     }
 
     public function genWord()
     {
-        $query = "SELECT (word) FROM words
-            ORDER BY RANDOM()
-            LIMIT 1";
-        $result = $this->db->query($query);
-        $row = $result->fetchArray();
-        return $row[0];
+        $wordBean = R::findOne('words', 'ORDER BY RANDOM() LIMIT 1');
+
+        if ($wordBean) {
+            return $wordBean->word;
+        }
+
+        return null;
     }
 
     public function storeGame($player, $word, $outcome)
     {
-        $game_id = 0;
-        $query = "SELECT (game_id) FROM finished_games
-            ORDER BY rowid DESC LIMIT 1";
-        $result = $this->db->query($query);
-        if ($row = $result->fetchArray()) {
-            $game_id = $row[0] + 1;
+        $game = R::dispense('finishedgames');
+
+        $game->gameId = 0;
+        $game->datetime = date('Y-m-d H:i:s');
+        $game->player = $player;
+        $game->word = $word;
+        $game->result = $outcome;
+
+
+        $idBean = R::findOne('finishedgames', 'ORDER BY game_id DESC LIMIT 1');
+        if ($idBean) {
+            $game->gameId = $idBean->gameId + 1;
         }
 
-        $date = date('Y-m-d H:i:s');
-
-        $query = "INSERT INTO finished_games
-            (game_id, player, date_time, word, result)
-            VALUES ('$game_id', '$player', '$date', '$word', '$outcome')";
-        $this->db->exec($query);
+        R::store($game);
     }
 
     private function storeTry($step, $letter, $outcome)
     {
-        $game_id = 0;
-        $query = "SELECT (game_id) FROM finished_games
-            ORDER BY rowid DESC LIMIT 1";
-        $result = $this->db->query($query);
-        if ($row = $result->fetchArray()) {
-            $game_id = $row[0] + 1;
+        $try = R::dispense('tries');
+
+        $try->gameId = 0;
+        $try->step = $step;
+        $try->letter = $letter;
+        $try->result = $outcome;
+
+        $idBean = R::findOne('finishedgames', 'ORDER BY game_id DESC LIMIT 1');
+        if ($idBean) {
+            $try->gameId = $idBean->gameId + 1;
         }
 
-
-        $query = "INSERT INTO tries
-                (game_id, step, letter, result)
-                VALUES ('$game_id', '$step', '$letter', '$outcome')";
-        $this->db->exec($query);
+        R::store($try);
     }
 
     public function checkLetter($step, $letter, $hidden_word, &$temp_word, &$errors, &$found_letters)
@@ -115,21 +147,13 @@ class Model
 
     public function showGames()
     {
-        $query = "SELECT * FROM finished_games";
-        $result = $this->db->query($query);
+        $result = R::findAll('finishedgames');
         View::showGames($result);
     }
 
     public function repeatGame($id)
     {
-        $query = "SELECT * FROM tries
-            WHERE game_id = $id";
-        $result = $this->db->query($query);
+        $result = R::findAll('tries', 'game_id = ?', [$id - 1]);
         View::repeatGame($result);
-    }
-
-    public function closeConnection()
-    {
-        $this->db->close();
     }
 }

@@ -64,12 +64,12 @@ class View
     static function showGames($games)
     {
         line("ID | PLAYER | DATE | WORD | RESULT");
-        while ($row = $games->fetchArray()) {
-            $id = $row["game_id"];
-            $player = $row["player"];
-            $date = $row["date_time"];
-            $word = $row["word"];
-            $result = $row["result"];
+        foreach ($games as $row) {
+            $id = $row->gameId;
+            $player = $row->player;
+            $date = $row->datetime;
+            $word = $row->word;
+            $result = $row->result;
             line($id . " | " . $player . " | " . $date . " | " . $word . " | " . $result);
         }
     }
@@ -77,10 +77,10 @@ class View
     static function repeatGame($game)
     {
         line("STEP | LETTER | RESULT");
-        while ($row = $game->fetchArray()) {
-            $step = $row["step"];
-            $letter = $row["letter"];
-            $result = $row["result"];
+        foreach ($game as $row) {
+            $step = $row->step;
+            $letter = $row->letter;
+            $result = $row->result;
             line($step . " | " . $letter . " | " . $result);
         }
     }

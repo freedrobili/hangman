@@ -13,7 +13,7 @@ class Controller
     public function __construct()
     {
         $this->name = View::inputName();
-        $this->model = new Model("game.db");
+        $this->model = new Model("bin\game.db");
     }
 
     public function menu()
@@ -30,7 +30,7 @@ class Controller
                 $this->model->repeatGame(View::makeInput());
                 break;
             case 4:
-                $this->model->closeConnection();
+                // $this->model->closeConnection();
                 exit;
             default:
                 break;
